@@ -38,6 +38,7 @@ peer_list=[]
 link_list=[]
 merged_list=[]
 hash_list=[]
+delete_list=[]
 
 
 ######  FUNCTION  #######
@@ -48,7 +49,7 @@ def torrent_verification(mytitle,mysize,myseed,mypeer,mylink):
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | FILE SIZE :"+str_size+" NAME : "+mytitle+"\n")
         mytitle=mytitle.replace('/','_').replace('*','_').replace(':','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_').replace('?','_').replace('\'','_')
         pathFile=TmpBlackholeDir+mytitle+'.torrent'
-        
+
         wget.download(mylink,pathFile)
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Successfully DL torrent\n")
         time.sleep(0.5)
@@ -61,18 +62,12 @@ def torrent_verification(mytitle,mysize,myseed,mypeer,mylink):
 
         mark=0
         for hash_data in hash_list:
-            if info_hash == hash_data:
+            print("# EXTRACTED HASH: ",info_hash," # BASE HASH: ",hash_data[0])
+            if info_hash == hash_data[0]:
                 log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Hash already present\n")
                 mark=1
+                delete_list.append(mytitle+'.torrent')
                 print("mark = 1\n")
-
-                if os.path.exists(pathFile):
-                    time.sleep(1)
-                    os.remove(pathFile)
-                    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Removing file\n")
-
-                else:
-                    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | ERROR: File does not exist\n")
 
         if mark == 0:
             print("mark = 0")
@@ -194,6 +189,11 @@ if __name__ == '__main__':
     log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Closing cursor \n")
     log_file.close()
 
+    for element in delete_list:
+        print("on remove")
+        os.remove(TmpBlackholeDir+element)
+        time.sleep(0.5)
+
     for file in os.listdir(TmpBlackholeDir):
         try:
             print(file)
@@ -201,4 +201,3 @@ if __name__ == '__main__':
 
         except PermissionError:
             print("File in use")
-
