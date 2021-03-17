@@ -1,0 +1,6 @@
+wget==3.2
+requests==2.25.1
+hurry.filesize==0.9
+bencoding==0.2.6
+hurry==1.1
+mysql_connector_repackaged==0.3.1
