@@ -1,0 +1,4 @@
+.git
+*.sql
+README.md
+Dockerfile
