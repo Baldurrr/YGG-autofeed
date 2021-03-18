@@ -3,5 +3,5 @@ requests==2.25.1
 hurry.filesize==0.9
 bencoding==0.2.6
 hurry==1.1
-mysql-connector==2.2.9
+mysql-connector-python==8.0.23
 environs==9.3.1
