@@ -10,4 +10,4 @@ RUN pip3 install -r requirements.txt
 
 VOLUME /blackhole
 
-CMD [ "python3", "ygg-autofeed" ]
+CMD [ "python3", "ygg-autofeed.py" ]
