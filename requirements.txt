@@ -3,5 +3,10 @@ requests==2.25.1
 hurry.filesize==0.9
 bencoding==0.2.6
 hurry==1.1
+<<<<<<< HEAD
 mysql_connector_repackaged==0.3.1
 urllib3==1.25.10
+=======
+mysql-connector-python==8.0.23
+environs==9.3.1
+>>>>>>> 107b6f5746de438c291023e6286c5a784afd6bf0

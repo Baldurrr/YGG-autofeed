@@ -48,6 +48,18 @@ def torrent_move():
 
     log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Torrent files moved\n")
 
+def torrent_move():
+    for file in os.listdir(TmpBlackholeDir):
+        try:
+            shutil.move(TmpBlackholeDir+file, DelugeBlackhole+file)
+
+        except PermissionError:
+            log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | File in use\n")
+
+    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Torrent files moved\n")
+
+
+
 def torrent_verification(mytitle,mysize,myseed,mypeer,mylink):
     if mysize <= max_size and mysize > min_size:
         str_size=size(mysize, system=si)
@@ -78,7 +90,11 @@ def torrent_verification(mytitle,mysize,myseed,mypeer,mylink):
     else:
         print("# Not downloading\n")
 
+<<<<<<< HEAD
 ########### ROOT CODE #############
+=======
+########### TRUNC CODE #############
+>>>>>>> 107b6f5746de438c291023e6286c5a784afd6bf0
 
 if __name__ == '__main__':
 
@@ -91,7 +107,11 @@ if __name__ == '__main__':
         # print(max_size)
         min_size= int(os.environ.get('FILE_MIN_SIZE'))
         # print(min_size)
+<<<<<<< HEAD
         scrape_time= int(os.environ.get('SCRAPE_TIME'))
+=======
+        scrape_time= int(os.environ.get('SCRAP_TIME'))
+>>>>>>> 107b6f5746de438c291023e6286c5a784afd6bf0
         # print(scrape_time)
         myJackettPath= str(os.environ.get('JACKETT_YGG_TORZNAB'))
         # print(myJackettPath)
@@ -128,6 +148,7 @@ if __name__ == '__main__':
             port=sql_port)
 
             log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Connected to database at "+sql_host+" \n")
+<<<<<<< HEAD
 
         except mysql.connector.Error as e:
             log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Error connecting to MysqlDB Platform \n")
@@ -137,6 +158,17 @@ if __name__ == '__main__':
         cur = conn.cursor()
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Creating cursor \n")
 
+=======
+
+        except mysql.connector.Error as e:
+            log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Error connecting to MysqlDB Platform \n")
+            log_file.write(e+"\n")
+            sys.exit(1)
+
+        cur = conn.cursor()
+        log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Creating cursor \n")
+
+>>>>>>> 107b6f5746de438c291023e6286c5a784afd6bf0
         try:
             cur.execute("SELECT TORRENT_HASH from torrent_hash")
             log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | SELECT query successfull \n")
