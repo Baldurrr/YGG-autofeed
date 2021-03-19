@@ -89,7 +89,7 @@ if __name__ == '__main__':
         # print(myJackettPath)
         DelugeBlackhole= str(os.environ.get('DELUGE_BLACKHOLE_DIR'))
         # print(DelugeBlackhole)
-        TmpBlackholeDir= str(os.environ.get('TMP_BALCKHOLE_DIR'))
+        TmpBlackholeDir= str(os.environ.get('TMP_BLACKHOLE_DIR'))
         # print(TmpBlackholeDir)
         MyLogFile= str(os.environ.get('LOG_FILE_PATH'))
         # print(MyLogFile)
