@@ -6,7 +6,8 @@ ADD requirements.txt requirements.txt
 
 ADD ygg-autofeed.py ygg-autofeed.py
 
-RUN pip3 install -r requirements.txt
+RUN apk add --no-cache ca-certificates wget &&\
+pip3 install -r requirements.txt
 
 VOLUME /blackhole
 
