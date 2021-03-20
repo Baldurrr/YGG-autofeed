@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import requests as req
 import re
+from re import search
 import itertools
 from hurry.filesize import size, si
 import wget
@@ -16,8 +17,8 @@ import shutil
 import threading
 from environs import Env
 import urllib.request
-
-# retry feature ??
+from requests.adapters import HTTPAdapter
+from urllib3.util import Retry
 
 ## REGEX ##
 seedPatterns=r'torznab:attr name="seeders" value="\d+'
@@ -34,7 +35,16 @@ merged_list=[]
 hash_list=[]
 delete_list=[]
 
-######  FUNCTION  #######
+######  FUNCTIONS  #######
+def retry_feature(url):
+
+    s = req.Session()
+    retries = Retry(total=5, backoff_factor=1, status_forcelist=[500,502,503,504,520,522,523,524])
+    s.mount('http://', HTTPAdapter(max_retries=retries))
+    response=s.get(url)
+    print("GET feed")
+    return response
+
 def torrent_delete(element):
     os.remove(TmpBlackholeDir+element)
 
@@ -48,94 +58,110 @@ def torrent_move():
 
     log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Torrent files moved\n")
 
-def torrent_move():
-    for file in os.listdir(TmpBlackholeDir):
-        try:
-            shutil.move(TmpBlackholeDir+file, DelugeBlackhole+file)
+def keyword_researcher(mytitle,mysize,mylink,keywords):
 
-        except PermissionError:
-            log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | File in use\n")
+    keywords_list=keywords.split(",")
+    lower_title=mytitle.lower()
 
-    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Torrent files moved\n")
+    for words in keywords_list:
+
+        if search(" ",words):
+            splited_words=words.split(" ")
+            len_splited_words=len(splited_words)
+
+            word_counter=0
+            for item in splited_words:
+                if search(item,lower_title):
+                    word_counter=word_counter+1
+
+            if len_splited_words == word_counter:
+                print("Resplited Keyword OK")
+                torrent_downloading(mytitle,mysize,mylink)
+
+            else:
+                print("Keyword not recognize in title")
+
+        elif search(words,lower_title):
+            print("Direct Keyword OK")
+            torrent_downloading(mytitle,mysize,mylink)
+
+def torrent_downloading(mytitle,mysize,mylink):
+
+    str_size=size(mysize, system=si)
+    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | FILE SIZE :"+str_size+" NAME : "+mytitle+"\n")
+    mytitle=mytitle.replace('/','_').replace('*','_').replace(':','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_').replace('?','_').replace('\'','_')
+    pathFile=TmpBlackholeDir+mytitle+'.torrent'
+
+    # wget.download(mylink,pathFile)
+    urllib.request.urlretrieve(mylink,pathFile)
+
+    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Successfully DL torrent\n")
+    print("--DOWNLOADING--\n")
+
+    objTorrentFile = open(pathFile, "rb")
+    decodedDict = bencoding.bdecode(objTorrentFile.read())
+    info_hash = hashlib.sha1(bencoding.bencode(decodedDict[b"info"])).hexdigest()
+
+    mark=0
+    for hash_data in hash_list:
+        if info_hash == hash_data[0]:
+            log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Hash already present\n")
+            mark=1
+            delete_list.append(mytitle+'.torrent')
+
+    if mark == 0:
+        cur.execute("INSERT into torrent_hash (TORRENT_TITLE, TORRENT_HASH) VALUES ('{}', '{}')".format(mytitle,info_hash)) 
 
 
+def feature_verification(mytitle,mysize,myseed,mypeer,mylink,keyword_activated,keywords,peers_seeds_activated):
 
-def torrent_verification(mytitle,mysize,myseed,mypeer,mylink):
-    if mysize <= max_size and mysize > min_size:
-        str_size=size(mysize, system=si)
-        log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | FILE SIZE :"+str_size+" NAME : "+mytitle+"\n")
-        mytitle=mytitle.replace('/','_').replace('*','_').replace(':','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_').replace('?','_').replace('\'','_')
-        pathFile=TmpBlackholeDir+mytitle+'.torrent'
+    if mysize <= max_size and mysize > min_size and ((keyword_activated == "FALSE" or keyword_activated == "")  and (peers_seeds_activated == "FALSE" or peers_seeds_activated == "")):
+        print("# Size only\n")
+        torrent_downloading(mytitle,mysize,mylink)
 
-        # wget.download(mylink,pathFile)
-        urllib.request.urlretrieve(mylink,pathFile)
+    elif mysize <= max_size and mysize > min_size and keyword_activated == "TRUE":
+        print("# Size + Keyword\n")
+        keyword_researcher(mytitle,mysize,mylink,keywords)
+    
+    elif mysize <= max_size and mysize > min_size and peers_seeds_activated == "TRUE":
+        print("# Size + Peers/Seeds\n")
+        # torrent_downloading(mytitle,mysize,myseed,mypeer,mylink)
 
-        log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Successfully DL torrent\n")
-        print("# DL ok\n")
-
-        objTorrentFile = open(pathFile, "rb")
-        decodedDict = bencoding.bdecode(objTorrentFile.read())
-        info_hash = hashlib.sha1(bencoding.bencode(decodedDict[b"info"])).hexdigest()
-
-        mark=0
-        for hash_data in hash_list:
-            if info_hash == hash_data[0]:
-                log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Hash already present\n")
-                mark=1
-                delete_list.append(mytitle+'.torrent')
-
-        if mark == 0:
-            cur.execute("INSERT into torrent_hash (TORRENT_TITLE, TORRENT_HASH) VALUES ('{}', '{}')".format(mytitle,info_hash)) 
+    elif mysize <= max_size and mysize > min_size and keyword_activated == "TRUE" and peers_seeds_activated == "TRUE":
+        print("# Size + Keyword + Peers/Seeds\n")
+        # torrent_downloading(mytitle,mysize,myseed,mypeer,mylink)
 
     else:
-        print("# Not downloading\n")
+        print("No match with feature\n")
 
-<<<<<<< HEAD
 ########### ROOT CODE #############
-=======
-########### TRUNC CODE #############
->>>>>>> 107b6f5746de438c291023e6286c5a784afd6bf0
-
 if __name__ == '__main__':
 
     while True:
 
-        ## FILE LOGGING ##
+        ## ENV VAR ##
         env = Env()
         env.read_env()
         max_size= int(os.environ.get('FILE_MAX_SIZE'))
-        # print(max_size)
         min_size= int(os.environ.get('FILE_MIN_SIZE'))
-        # print(min_size)
-<<<<<<< HEAD
         scrape_time= int(os.environ.get('SCRAPE_TIME'))
-=======
-        scrape_time= int(os.environ.get('SCRAP_TIME'))
->>>>>>> 107b6f5746de438c291023e6286c5a784afd6bf0
-        # print(scrape_time)
+        keyword_activated= str(os.environ.get('KEYWORD_FEATURE_ACTIV'))
+        keywords= str(os.environ.get('KEYWORD_LIST'))
+        peers_seeds_activated= str(os.environ.get('PEERS_SEEDS_FEATURE_ACTIV'))
+
         myJackettPath= str(os.environ.get('JACKETT_YGG_TORZNAB'))
-        # print(myJackettPath)
         DelugeBlackhole= str(os.environ.get('DELUGE_BLACKHOLE_DIR'))
-        # print(DelugeBlackhole)
         TmpBlackholeDir= str(os.environ.get('TMP_BALCKHOLE_DIR'))
-        # print(TmpBlackholeDir)
         MyLogFile= str(os.environ.get('LOG_FILE_PATH'))
-        # print(MyLogFile)
+
         sql_user= str(os.environ.get('SQL_USER'))
-        # print(sql_user)
         sql_password= str(os.environ.get('SQL_PASSWORD'))
-        # print(sql_password)
         sql_host= str(os.environ.get('SQL_HOST'))
-        # print(sql_host)
         sql_db= str(os.environ.get('SQL_DB'))
-        # print(sql_db)
         sql_port= int(os.environ.get('SQL_PORT'))
-        # print(sql_port)
         
         tic = time.perf_counter()
-
         log_file= open(MyLogFile, "a")
-
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | # SCRIPT STARTED # \n")
 
         ## DATABASE CONNEXION ##
@@ -148,7 +174,6 @@ if __name__ == '__main__':
             port=sql_port)
 
             log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Connected to database at "+sql_host+" \n")
-<<<<<<< HEAD
 
         except mysql.connector.Error as e:
             log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Error connecting to MysqlDB Platform \n")
@@ -158,17 +183,6 @@ if __name__ == '__main__':
         cur = conn.cursor()
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Creating cursor \n")
 
-=======
-
-        except mysql.connector.Error as e:
-            log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Error connecting to MysqlDB Platform \n")
-            log_file.write(e+"\n")
-            sys.exit(1)
-
-        cur = conn.cursor()
-        log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Creating cursor \n")
-
->>>>>>> 107b6f5746de438c291023e6286c5a784afd6bf0
         try:
             cur.execute("SELECT TORRENT_HASH from torrent_hash")
             log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | SELECT query successfull \n")
@@ -190,7 +204,9 @@ if __name__ == '__main__':
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | "+len_hashlist+" Hashs in DB\n")
 
         # ## SCRAPING ##
-        resp = req.get(myJackettPath)
+        resp = retry_feature(myJackettPath)
+        # resp = req.get(myJackettPath)
+
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Requesting Jackett API\n")
         data=str(resp.text)
         myroot = ET.fromstring(data)
@@ -240,19 +256,16 @@ if __name__ == '__main__':
             mylink=element[4]
 
             task_number="t"+str(counter)
-            tx=threading.Thread(target=torrent_verification(mytitle,mysize,myseed,mypeer,mylink), name=task_number)
+            tx=threading.Thread(target=feature_verification(mytitle,mysize,myseed,mypeer,mylink,keyword_activated,keywords,peers_seeds_activated), name=task_number)
             tx.start()
-
             counter=counter+1
 
         conn.commit()
         conn.close()
-
         log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Closing cursor \n")
 
+        ## PURGE ##
         counter2=0
-
-        ## PURGE
         for element in delete_list:
 
             task_number2="tx"+str(counter2)
