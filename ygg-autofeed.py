@@ -36,6 +36,42 @@ hash_list=[]
 delete_list=[]
 
 ######  FUNCTIONS  #######
+def breaking_function(mytitle,banned_word):
+    test_list=[]
+    lower_title=mytitle.lower()
+    banned_list=banned_word.split(",")
+
+    for banned in banned_list:
+        
+        if search(" ",banned):
+            splited_banned_words=banned.split(" ")
+            len_splited_banned_words=len(splited_banned_words)
+
+            word_counter=0
+            for item in splited_banned_words:
+                if search(item,lower_title):
+                    print("trouver")
+                    word_counter=word_counter+1
+
+            if len_splited_banned_words == word_counter:
+                print("Resplited banned word OK")
+                ok='ok'
+                test_list.append(ok)
+                break
+
+            else:
+                print("No banned words!\n")
+
+        elif search(banned,lower_title):
+            print("Direct banned word OK")
+            ok='ok'
+            test_list.append(ok)
+            break
+
+    len_test=len(test_list)
+    print("Breaking state: "+str(len_test))
+    return len_test
+
 def retry_feature(url):
 
     s = req.Session()
@@ -62,7 +98,7 @@ def keyword_researcher(mytitle,mysize,mylink,keywords):
 
     keywords_list=keywords.split(",")
     lower_title=mytitle.lower()
-
+    
     for words in keywords_list:
 
         if search(" ",words):
@@ -88,7 +124,7 @@ def keyword_researcher(mytitle,mysize,mylink,keywords):
 def torrent_downloading(mytitle,mysize,mylink):
 
     str_size=size(mysize, system=si)
-    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | FILE SIZE :"+str_size+" NAME : "+mytitle+"\n")
+    log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | FILE SIZE: "+str_size+" NAME: "+mytitle+"\n")
     mytitle=mytitle.replace('/','_').replace('*','_').replace(':','_').replace('"','_').replace('<','_').replace('>','_').replace('|','_').replace('?','_').replace('\'','_')
     pathFile=TmpBlackholeDir+mytitle+'.torrent'
 
@@ -113,26 +149,43 @@ def torrent_downloading(mytitle,mysize,mylink):
         cur.execute("INSERT into torrent_hash (TORRENT_TITLE, TORRENT_HASH) VALUES ('{}', '{}')".format(mytitle,info_hash)) 
 
 
-def feature_verification(mytitle,mysize,myseed,mypeer,mylink,keyword_activated,keywords,peers_seeds_activated):
+def feature_verification(mytitle,mysize,myseed,mypeer,mylink,keyword_activated,keywords,peers_seeds_activated,banned_word):
 
     if mysize <= max_size and mysize > min_size and ((keyword_activated == "FALSE" or keyword_activated == "")  and (peers_seeds_activated == "FALSE" or peers_seeds_activated == "")):
-        print("# Size only\n")
-        torrent_downloading(mytitle,mysize,mylink)
+        print("# Size only #\n")
+        isbreaking = breaking_function(mytitle,banned_word)
 
+        if isbreaking == 0 :
+            print("Pas de mots bannis detecter")
+            torrent_downloading(mytitle,mysize,mylink)
+
+        else:
+            print("Mot banni reconnu: FIN")
+            log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | BANNED WORD DETECTED\n")
+
+        
     elif mysize <= max_size and mysize > min_size and keyword_activated == "TRUE":
-        print("# Size + Keyword\n")
-        keyword_researcher(mytitle,mysize,mylink,keywords)
-    
+        print("# Size + Keyword #\n")
+        isbreaking = breaking_function(mytitle,banned_word)
+
+        if isbreaking == 0 :
+            print("Pas de mots bannis detecter")
+            keyword_researcher(mytitle,mysize,mylink,keywords)
+
+        else:
+            print("Mot banni reconnu: FIN")
+            log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | BANNED WORD DETECTED\n")
+
     elif mysize <= max_size and mysize > min_size and peers_seeds_activated == "TRUE":
-        print("# Size + Peers/Seeds\n")
+        print("# Size + Peers/Seeds #\n")
         # torrent_downloading(mytitle,mysize,myseed,mypeer,mylink)
 
     elif mysize <= max_size and mysize > min_size and keyword_activated == "TRUE" and peers_seeds_activated == "TRUE":
-        print("# Size + Keyword + Peers/Seeds\n")
+        print("# Size + Keyword + Peers/Seeds #\n")
         # torrent_downloading(mytitle,mysize,myseed,mypeer,mylink)
 
     else:
-        print("No match with feature\n")
+        print("* No match with feature *\n")
 
 ########### ROOT CODE #############
 if __name__ == '__main__':
@@ -147,6 +200,7 @@ if __name__ == '__main__':
         scrape_time= int(os.environ.get('SCRAPE_TIME'))
         keyword_activated= str(os.environ.get('KEYWORD_FEATURE_ACTIV'))
         keywords= str(os.environ.get('KEYWORD_LIST'))
+        banned_word=str(os.environ.get('BANNED_WORDS'))
         peers_seeds_activated= str(os.environ.get('PEERS_SEEDS_FEATURE_ACTIV'))
 
         myJackettPath= str(os.environ.get('JACKETT_YGG_TORZNAB'))
@@ -177,7 +231,6 @@ if __name__ == '__main__':
 
         except mysql.connector.Error as e:
             log_file.write("["+datetime.now().strftime("%d/%m/%Y - %H:%M:%S")+"] | Error connecting to MysqlDB Platform \n")
-            log_file.write(e+"\n")
             sys.exit(1)
 
         cur = conn.cursor()
@@ -256,7 +309,7 @@ if __name__ == '__main__':
             mylink=element[4]
 
             task_number="t"+str(counter)
-            tx=threading.Thread(target=feature_verification(mytitle,mysize,myseed,mypeer,mylink,keyword_activated,keywords,peers_seeds_activated), name=task_number)
+            tx=threading.Thread(target=feature_verification(mytitle,mysize,myseed,mypeer,mylink,keyword_activated,keywords,peers_seeds_activated,banned_word), name=task_number)
             tx.start()
             counter=counter+1
 
